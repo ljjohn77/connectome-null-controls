@@ -1,0 +1,418 @@
+\documentclass[11pt]{article}
+
+% ── arXiv standard packages ──────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{authblk}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\geometry{margin=1in}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black,
+}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  columns=fullflexible,
+}
+
+\title{\bfseries Staging Localization and Zero-Model Controls for\\
+Connectome-Constrained Controllers:\\
+Five Pre-Registered Negative Results}
+
+\author[1]{Lee\thanks{Correspondence: \texttt{ljjohn@hotmail.com}}}
+\affil[1]{Independent researcher}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Connectome-constrained models of neural control are increasingly reported to
+``produce behaviours''. We argue that two measurement practices are missing from
+this literature, and we quantify what their absence costs. First, a widely used
+separability criterion---the Fisher discriminant ratio $\mathrm{Sb}/\mathrm{Sw}$
+thresholded at $1.0$---has a non-zero null expectation of $(K{-}1)/[K(N{-}1)]$;
+we show the criterion rejects data that decodes at 92\% accuracy. Second, decoder
+accuracies are routinely reported without a strong null control; we show that
+random linear projections, sparse random projections, and random neuron subsets
+all reach 100\% on the same data, so such numbers do not identify structure.
+We then report five pre-registered negative results from a system that drives a
+29-DoF humanoid with a frozen \emph{Drosophila} whole-brain connectome
+(166{,}700 neurons, 25.58M synapses, LIF dynamics): descending-neuron and
+motor-neuron populations carry $\approx 0$ bits of task-family information; a
+nonlinear readout underperforms a linear one; and a frozen LIF network exhibits
+no habituation. A staging measurement localizes the information loss to spike
+transduction: information arrives at the descending neurons' synaptic current at
+100\% and leaves their spike output at 82.7\%. We also report what survives: the
+connectome's \emph{topology} carries causal timing information, with
+degree-preserving rewiring reducing a measured 102.8\,N punch contact to 0\,N
+while an Erd\H{o}s--R\'enyi graph of matched size fails to trigger at all.
+We release the measurement toolkit and a 24-source survey annotated by interface
+paradigm.
+\end{abstract}
+
+\section{Introduction}
+
+The connectome-as-controller literature has an interpretation problem that its
+practitioners have begun to name. A model is instantiated from a connectome,
+given a body, and reported to produce locomotion, grooming, or
+escape~\cite{flygm,neuromechfly}. Whether
+such a report supports the claim that the connectome \emph{computes} the
+behaviour depends entirely on how the interface between network and body was
+constructed---and that is the variable least often reported.
+
+This paper is a negative-result contribution with two methodological
+prescriptions. We do not claim a better controller. We claim that two common
+measurement practices yield non-identifiable conclusions, show what happens when
+they are corrected, and report what remains standing.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item A \emph{staging localization} procedure: measure separability at every
+        stage of the pipeline with the same decoder, so that the drop-off
+        identifies the information-loss layer rather than an overall verdict.
+  \item A correction to a common separability criterion, with the null
+        expectation derived and the failure demonstrated quantitatively.
+  \item A demonstration that random linear projections match the reported
+        accuracy of several structural representations, motivating a mandatory
+        control.
+  \item Five pre-registered negative results, each closed by a criterion
+        registered before the measurement.
+  \item One positive result with a three-model null comparison: connectome
+        topology carries causal timing information.
+\end{enumerate}
+
+\section{System under test}
+
+A whole-brain connectome of adult male \emph{Drosophila} (MaleCNS v1.0;
+166{,}700 neurons, 25{,}582{,}938 directed synapses) is instantiated as a
+leaky integrate-and-fire network in C++. It receives proprioceptive input
+(29 joint angles) through a sensory encoder into the ventral nerve cord and its
+descending-neuron (DN) output drives, through a hand-designed readout, a
+Unitree G1 humanoid simulated in MuJoCo with 29 actuated degrees of freedom.
+The connectome parameters are frozen bit-for-bit: resting potential, reset
+potential, threshold, membrane and synaptic time constants, refractory period,
+conduction delay, and the synaptic weight matrix.
+
+All measurements below were produced by C++ programs with the numbers written to
+versioned JSON artifacts; no result depends on a Python computation.
+
+\section{Staging localization}
+\label{sec:staging}
+
+The question ``does the connectome work?'' is unactionable. We instead measure
+separability at each stage using an identical decoder: leave-one-out
+nearest-centroid over standardized features, with a label-permutation null.
+
+Table~\ref{tab:staging} shows the result for a five-class posture-family task
+(300 trials, 60 per family).
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Stage & Dimensionality & LOO accuracy \\
+\midrule
+S0 joint angles                & 29    & 100.0\% \\
+S1 encoder drive               & 6370  & 100.0\% \\
+S2 sensory neuron spikes       & 6370  & 100.0\% \\
+S3a DN synaptic current        & 1314  & 100.0\% \quad $\leftarrow$ arrives intact \\
+S3  DN spikes                  & 1314  & 82.7\% \quad $\leftarrow$ loss occurs here \\
+\bottomrule
+\end{tabular}
+\caption{Per-stage separability. Information reaches the descending neurons'
+synaptic current without loss and is destroyed by spike transduction.}
+\label{tab:staging}
+\end{table}
+
+The actionable reading is not ``the connectome does not carry information'' but
+``spike transduction is lossy''. These imply different literatures and different
+remedies. Without staging, the project would have abandoned the wrong layer.
+
+A ceiling scan over drive gain ($\times 1.6$ to $\times 12.8$), four time
+windows within the 120-frame trial, and two front-end codes (rate vs.\ Gaussian
+population) reaches 92.0\% and never attains 100\%. The residual loss is
+attributable to the threshold-and-refractoriness nonlinearity rather than to
+insufficient drive, consistent with analyses that treat spike generation as an
+explicit information bottleneck~\cite{snrib}.
+
+\section{Two measurement errors}
+\label{sec:errors}
+
+\subsection{The Fisher ratio threshold has a non-zero null}
+
+We initially decided separability by requiring the Fisher discriminant ratio
+$\mathrm{Sb}/\mathrm{Sw} > 1.0$, where $\mathrm{Sb}$ is the between-class
+scatter and $\mathrm{Sw}$ the within-class scatter. The criterion reported
+``inseparable'' and the project came close to abandoning its central line of
+work.
+
+Under the null hypothesis of no class structure, the expectation of
+$\mathrm{Sb}/\mathrm{Sw}$ is not zero but
+\begin{equation}
+  \mathbb{E}\left[\frac{\mathrm{Sb}}{\mathrm{Sw}}\right]
+  = \frac{K-1}{K(N-1)},
+\end{equation}
+which equals $0.068$ for $K=4$ classes and $N=12$ samples per class. A threshold
+of $1.0$ therefore demands near-zero within-class variance rather than
+merely exceeding the noise floor.
+
+On our own data, $\mathrm{Sb}/\mathrm{Sw} = 0.409$, which is $6\times$ the null
+expectation (one-way ANOVA: $F = 6.00$, $\mathrm{df} = (3,44)$, $p = 0.0016$).
+The corresponding leave-one-out decoding accuracy is 92\%. The criterion labelled
+data that decodes at 92\% as inseparable.
+
+A second defect compounds the first: computing intra-class dispersion as the mean
+Euclidean distance to the centroid rather than as a standard deviation makes the
+denominator scale as $\sqrt{d}$. At $d = 26$ dimensions, white noise inflates the
+ratio's denominator by roughly a factor of five.
+
+The remedy is not a better threshold but a permutation null: shuffle labels,
+recompute, and compare against the resulting 95th percentile.
+
+\subsection{Accuracies without strong null controls are not identifiable}
+
+At one point several representations decoded at 100\%. We then ran the control
+that should have come first: replace the neural pipeline with a random linear map
+of the same output width.
+
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+Representation & LOO accuracy \\
+\midrule
+Random Gaussian projection, $6370 \to 1314$ & 100.0\% \\
+Sparse random projection (2\% density)      & 100.0\% \\
+Random neuron subset (1314 of 6370)         & 100.0\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+If a structure-free linear map saturates the metric, the metric does not
+identify structure. This retroactively invalidated every accuracy figure the
+project had produced, and it is the reason the toolkit accompanying this paper
+runs this control automatically.
+
+\section{Five pre-registered negative results}
+\label{sec:negative}
+
+Each result below was closed by a criterion registered \emph{before} the
+measurement. This ordering is the only reason the results are informative rather
+than post-hoc.
+
+\subsection{N-1: DN population carries $\approx 0$ bits of task information}
+
+Three named DN groups were examined across five posture families. One group fires
+2--3 spikes per 240\,ms window with 2.5\% inter-family variation; an all-zero-joint
+condition and a 1.9\,rad pose differ by 0.02 spikes, so the activity is an
+input-independent floor rather than a response. A second group is active
+(13--14\,Hz) but constant across families. A third sits on the decision threshold.
+
+A linear readout of the full 1314-dimensional DN vector does reach 82.7\%
+leave-one-out accuracy, so the space is decodable in a narrow sense. The features
+that action selection would use, however, are flat. Both statements hold; a report
+of only the first turns a 0-bit result into an apparent 83\% success.
+A plausible mechanism is that a small number of strong connections dominate
+predictions while the remainder constrains
+little~\cite{strongconn}, so group-averaged readouts dilute whatever the sparse
+strong subset carries.
+
+\subsection{N-2: a hand-designed 3-group binary code covers 2 classes, not 7}
+
+With three binary group signatures, $\chi^2 = 17.35$ ($\mathrm{df} = 9$,
+$p = 0.043$), so the code is above chance. Mutual information is
+$0.313$ bits against a 2-bit ceiling, and per-trial codes overlap across all four
+families (one code appears in every family: 3, 4, 8, and 6 times respectively).
+Aggregated per family, exactly two classes separate.
+
+\subsection{N-3: nonlinear readout underperforms linear}
+
+A 256--128 ReLU MLP reaches $74.1\% \pm 1.9$; ridge regression reaches
+$82.7\% \pm 0.0$. The difference is $-8.5\% \pm 1.9$ with a confidence interval
+excluding zero. At 36{,}000 samples the nonlinear hypothesis is
+over-parameterized. Controls behaved as required: random-weight MLP 16.7\%,
+shuffled labels 18.9\%, majority class 20.0\%, against a chance level of 20\%.
+
+\subsection{N-4: motor-neuron channel rates also carry $0$ bits}
+
+The motor-neuron layer is not silent: approximately 1{,}500 spikes per trial with
+about 300 of 708 neurons active, and 100\% of trials non-zero. Across families the
+six-channel rates vary by 4\% and 3\% respectively. The cause is structural rather
+than a channel-selection error: the drive is broad-spectrum, so flexor and
+extensor pools co-fire and cancel, with $\sum \mathrm{dir}\cdot\mathrm{rate}
+\approx 0.000$. Changing the channel table does not alter the information content
+of a broad-spectrum upstream drive.
+
+\subsection{N-5: a frozen LIF network has no habituation dynamics}
+
+With identical input repeated ten times, the early-window response is 261 spikes
+on every repetition: ratio $1.000$ against a pre-registered criterion of
+$\leq 0.70$. Across 44 trials with zero jitter, responses are bit-identical.
+A frozen LIF network with no plasticity, no noise, and no adaptation current is a
+deterministic map, so no habituation mechanism exists. The direction was closed
+under its own pre-registered stop condition rather than by tuning.
+
+\section{What survives: topology carries timing information}
+\label{sec:positive}
+
+Against the negative results above, one claim is supported by a three-model null
+comparison. In a closed loop where the readout triggers a punch, we substituted
+the connectome with two null graphs of identical size and edge count.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llrr@{}}
+\toprule
+Brain & Trigger & Contact frames & Peak force \\
+\midrule
+Real connectome                    & @36\,ms & 9 & \textbf{102.8\,N} \\
+Degree-preserving rewiring         & @88\,ms & 0 & 0.0\,N \\
+Erd\H{o}s--R\'enyi (matched size)  & never   & 0 & 0.0\,N \\
+\bottomrule
+\end{tabular}
+\caption{Three-model null comparison. Degree-preserving rewiring retains each
+neuron's in- and out-degree exactly and changes only edge targets.}
+\label{tab:null}
+\end{table}
+
+Degree-preserving rewiring alone destroys the behavior, reducing 102.8\,N to
+0\,N. The contribution is therefore topological rather than an artifact of the
+degree distribution. The Erd\H{o}s--R\'enyi graph fails to trigger at all,
+indicating that both topology and degree structure are required.
+
+This result is causal and falsifiable, and it is the claim we are prepared to
+defend: a frozen connectome's specific wiring is sufficient to drive a physical
+humanoid into a measurable punch, for a period determined by its internal
+dynamics.
+
+\section{Literature context}
+
+A 24-source survey accompanying this paper annotates each reference by
+\emph{interface paradigm}, because that variable determines what a result
+supports:
+
+\begin{center}
+\begin{tabular}{@{}llp{6.3cm}@{}}
+\toprule
+& Paradigm & Who does the work \\
+\midrule
+P1 & connectome as information processor, no learning & the wiring alone \\
+P2 & frozen connectome + learned interfaces           & the adapters \\
+P3 & connectome as structural prior                   & a trained policy \\
+P4 & learned interface absorbs everything             & the adapter; connectome decorative \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Reports of the form ``the connectome produces behaviours'' are almost always P1
+with reflex-class behaviours, or P4 where the interface performed the work.
+Neither supports a claim that the connectome computes.
+The digital-sphinx result~\cite{digitalsphinx} is the clearest case: a
+\emph{C.~elegans} connectome driving a \emph{Drosophila} body produced realistic
+walking, with the interface supplying the behavior.
+Whole-CNS emulation~\cite{wholecns} is titled, in part, ``behaviours that do not
+emerge''. P2 is the only paradigm with a genuine positive
+precedent~\cite{flycontrol}. Connectome constraints also predict measured neural
+responses well when the task matches the circuit's evolved
+function~\cite{flyvis}, which is precisely the condition our task violates: a fly
+connectome asked to classify humanoid punch families., and even there the authors report a 38.6\% episode
+failure rate against 7.0\% for an MLP baseline, so the prior trades robustness
+for speed.
+
+The system in this paper occupies a configuration absent from all 24 sources: a
+contact-dense task, a frozen connectome, and \emph{hand-designed} interfaces. Our
+finding is that such interfaces carry 0 bits of intent information while the
+topology carries real timing information---a combination no prior work reports.
+
+\section{Recommendations}
+
+\begin{enumerate}
+  \item \textbf{Localize before concluding.} Report separability per stage with a
+        fixed decoder. A single end-to-end number cannot distinguish a lossy
+        transduction layer from an uninformative representation.
+  \item \textbf{Use permutation nulls, not thresholds.} Derive the null
+        expectation for any statistic you threshold. For
+        $\mathrm{Sb}/\mathrm{Sw}$ it is $(K{-}1)/[K(N{-}1)]$, not zero.
+  \item \textbf{Always run a random-projection control at matched width.} If it
+        matches, the metric does not identify structure.
+  \item \textbf{Name the interface paradigm.} P4 results always produce behavior,
+        which is precisely why they cannot support connectome claims.
+  \item \textbf{Include a case that must fail.} A criterion that cannot reject is
+        not a criterion. The released toolkit contains a deliberately
+        non-separable input whose rejection verifies the test.
+  \item \textbf{Register stop conditions.} All five negative results here were
+        closed by conditions written before the measurement, which is what
+        prevents the result from being tuned into a positive one.
+\end{enumerate}
+
+\section{Availability}
+
+Code (MIT) and documentation (CC~BY~4.0):
+\begin{center}
+\url{https://github.com/ljjohn77/connectome-null-controls}
+\end{center}
+The package contains the staging probe with permutation null and
+random-projection control, the five negative results with the number that closed
+each, the three null models, and the annotated 24-source survey. It contains no
+third-party data; reproduction requires the publicly available MaleCNS
+connectome and MuJoCo models, whose licenses are listed in the repository.
+
+\section*{Acknowledgements}
+
+The author thanks the maintainers of the publicly released connectome datasets
+and simulation models on which this work depends, and the authors of the
+surveyed negative and critical results, whose willingness to publish
+non-confirmatory findings made this analysis possible.
+
+\begin{thebibliography}{99}
+
+\bibitem{wholecns}
+Embodied whole-CNS emulation of \emph{Drosophila melanogaster}: behaviours that
+emerge from the connectome, and behaviours that do not.
+\emph{arXiv:2610.33881}; dataset \emph{Zenodo} 23004436.
+
+\bibitem{digitalsphinx}
+The digital sphinx: can a worm brain control a fly body?
+\emph{eLife Reviewed Preprint} 111516.
+
+\bibitem{flycontrol}
+FlyControl: a \emph{Drosophila} connectome prior enables adaptable embodied
+control. \url{https://thu-neuroml.github.io/FlyControl/}
+
+\bibitem{flygm}
+Whole-brain connectomic graph model enables whole-body locomotion control in
+fruit fly. \emph{arXiv:2602.17997}.
+
+\bibitem{neuromechfly}
+NeuroMechFly v2: simulating embodied sensorimotor control in adult
+\emph{Drosophila}. \emph{Nature Methods} (2024).
+doi:10.1038/s41592-024-02497-y.
+
+\bibitem{flyvis}
+Connectome-constrained networks predict neural activity across the fly visual
+system. \emph{Nature} (2024).
+
+\bibitem{strongconn}
+Infrequent strong connections constrain connectomic predictions of neuronal
+activity. \emph{Cell} (2025).
+
+\bibitem{snrib}
+Learning to time-decode in spiking neural networks through the information
+bottleneck. \emph{NeurIPS} (2021).
+
+\end{thebibliography}
+
+\end{document}
