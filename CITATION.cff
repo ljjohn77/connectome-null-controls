@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this methodology, please cite it as below."
+title: "Staging Localization & Zero-Model Controls for Connectome-Constrained Controllers"
+abstract: >-
+  A methodology package for localizing where information is lost in a neural
+  pipeline, and for testing structural claims against strong null models.
+  Includes five pre-registered negative results from a project that attempted to
+  drive a 29-DoF humanoid with a Drosophila whole-brain connectome, and a
+  24-source survey annotated by interface paradigm.
+authors:
+  - name: "fly_brain_boxing contributors"
+version: "1.0.0"
+date-released: "2026-11-02"
+license: MIT
+url: "https://github.com/ljjohn77/connectome-null-controls"
+keywords:
+  - connectome
+  - neural controller
+  - null models
+  - reproducibility
+  - negative results
+  - Drosophila
+  - spiking neural network
